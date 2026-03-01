@@ -8,8 +8,8 @@
 		"DEAMJAVA"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/DEAMJAVA/IdBan",
+		"sources": "https://github.com/DEAMJAVA/IdBan"
 	},
 	"license": "MIT",
 	"icon": "assets/id-ban/icon.png",

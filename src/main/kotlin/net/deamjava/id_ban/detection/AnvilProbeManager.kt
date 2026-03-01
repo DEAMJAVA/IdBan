@@ -3,6 +3,8 @@ package net.deamjava.id_ban.detection
 import net.deamjava.id_ban.IdBan
 import net.deamjava.id_ban.config.IdBanConfig
 import net.minecraft.component.DataComponentTypes
+import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.screen.AnvilScreenHandler
@@ -40,6 +42,27 @@ import java.util.concurrent.ConcurrentHashMap
  *  • Pending probe state is stored in [pendingProbes] keyed by player UUID.
  */
 object AnvilProbeManager {
+    class ProbeAnvilScreenHandler(
+        syncId: Int,
+        playerInventory: PlayerInventory,
+        ctx: ScreenHandlerContext
+    ) : AnvilScreenHandler(syncId, playerInventory, ctx) {
+
+        override fun onClosed(player: PlayerEntity) {
+            // DO NOTHING
+            // prevents vanilla from giving items back or dropping them
+        }
+
+        // Optional but recommended: block shift-click stealing
+        override fun quickMove(player: PlayerEntity, slot: Int): ItemStack {
+            return ItemStack.EMPTY
+        }
+
+        // Optional: prevent pickup
+        override fun canUse(player: PlayerEntity): Boolean {
+            return true
+        }
+    }
 
     /**
      * Maps player UUID → queue of (modId, translationKey) pairs yet to probe.
@@ -110,7 +133,7 @@ object AnvilProbeManager {
                 playerEntity: net.minecraft.entity.player.PlayerEntity
             ): net.minecraft.screen.ScreenHandler {
                 val ctx = ScreenHandlerContext.create(player.entityWorld as net.minecraft.server.world.ServerWorld, player.blockPos)
-                val handler = AnvilScreenHandler(syncId, playerInventory, ctx)
+                val handler = ProbeAnvilScreenHandler(syncId, playerInventory, ctx)
                 // Insert the probe item into the first input slot
                 handler.slots[0].stack = probeItem.copy()
                 return handler
