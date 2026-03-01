@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "net.deamjava.id_ban.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+      "AnvilRenamePacketMixin"
+    ],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
