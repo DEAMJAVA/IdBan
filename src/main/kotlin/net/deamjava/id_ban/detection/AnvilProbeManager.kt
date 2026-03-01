@@ -16,30 +16,7 @@ import net.minecraft.text.Text
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Implements the "Anvil Translation Key Probe" exploit.
- * HOW IT WORKS:
- *  1. When a player joins, we open a fake anvil UI for them.
- *  2. We place an item in the input slot whose custom name is set to a raw
- *     translation key from the target mod  (e.g. "sodium.option_impact.low").
- *  3. The client renders the item name by resolving the key through its
- *     local language files.  If Sodium is installed, the key resolves to
- *     "Low"; if not, the client displays the raw key unchanged.
- *  4. When the player "renames" (which happens automatically on the client
- *     side as it pre-populates the rename field with the resolved name), a
- *     RenameItemC2SPacket is sent to the server containing the resolved text.
- *  5. Our mixin ([net.deamjava.id_ban.mixin.AnvilRenamePacketMixin]) intercepts
- *     that packet BEFORE the vanilla handler processes it.  We compare the
- *     received string against the expected raw key.
- *     ─ If they differ → the client resolved it → mod is present.
- *     ─ If they are equal → mod is absent (or the client blocks the probe).
- * IMPLEMENTATION NOTES:
- *  • We only probe for mods that are configured in [IdBanConfig.config.translationProbes].
- *  • We send probes one at a time with a short delay so we don't flood the player.
- *  • The anvil is opened server-side; the client will auto-close it once it
- *    receives the rename packet callback (vanilla behaviour).
- *  • Pending probe state is stored in [pendingProbes] keyed by player UUID.
- */
+
 object AnvilProbeManager {
     class ProbeAnvilScreenHandler(
         syncId: Int,
