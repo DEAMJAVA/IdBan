@@ -10,6 +10,7 @@ import net.minecraft.item.Items
 import net.minecraft.screen.AnvilScreenHandler
 import net.minecraft.screen.NamedScreenHandlerFactory
 import net.minecraft.screen.ScreenHandlerContext
+import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
 import java.util.UUID
@@ -17,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Implements the "Anvil Translation Key Probe" exploit.
- *
  * HOW IT WORKS:
  *  1. When a player joins, we open a fake anvil UI for them.
  *  2. We place an item in the input slot whose custom name is set to a raw
@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentHashMap
  *     received string against the expected raw key.
  *     ─ If they differ → the client resolved it → mod is present.
  *     ─ If they are equal → mod is absent (or the client blocks the probe).
- *
  * IMPLEMENTATION NOTES:
  *  • We only probe for mods that are configured in [IdBanConfig.config.translationProbes].
  *  • We send probes one at a time with a short delay so we don't flood the player.
@@ -77,8 +76,21 @@ object AnvilProbeManager {
     val activeProbe: ConcurrentHashMap<UUID, Pair<String, String>> = ConcurrentHashMap()
 
     /**
+     * Tracks probe sessions triggered by /idban check (not by join).
+     * These sessions report results back to the operator and never kick.
+     * Maps player UUID → CheckSession.
+     */
+    private val checkSessions: ConcurrentHashMap<UUID, CheckSession> = ConcurrentHashMap()
+
+    data class CheckSession(
+        val source: ServerCommandSource,
+        val detected: MutableList<String> = mutableListOf(),
+        val notDetected: MutableList<String> = mutableListOf()
+    )
+
+    /**
      * Schedule probes for all translation keys configured in the config.
-     * Only probes that correspond to banned OR whitelist-relevant mods are sent.
+     * Called on join — results are used for ban enforcement.
      */
     fun scheduleProbes(player: ServerPlayerEntity) {
         val cfg = IdBanConfig.config
@@ -98,12 +110,53 @@ object AnvilProbeManager {
     }
 
     /**
+     * Schedule probes triggered by /idban check.
+     * Results are reported back to [source] — no kicks are issued.
+     */
+    fun scheduleCheckProbes(player: ServerPlayerEntity, source: ServerCommandSource) {
+        val cfg = IdBanConfig.config
+        val probes = cfg.translationProbes
+
+        if (probes.isEmpty()) {
+            source.sendFeedback({ Text.literal("§e[IdBan] No translation probes configured.") }, false)
+            return
+        }
+
+        // If probes are already running for this player (e.g. still joining),
+        // don't stack a second run — just inform the operator.
+        if (pendingProbes.containsKey(player.uuid) || activeProbe.containsKey(player.uuid)) {
+            source.sendFeedback({
+                Text.literal("§e[IdBan] Probes already in progress for ${player.name.string}, try again shortly.")
+            }, false)
+            return
+        }
+
+        checkSessions[player.uuid] = CheckSession(source)
+
+        val queue = ArrayDeque<Pair<String, String>>()
+        for ((modId, key) in probes) {
+            queue.addLast(modId to key)
+        }
+        pendingProbes[player.uuid] = queue
+
+        source.sendFeedback({
+            Text.literal("§7[IdBan] Running ${probes.size} probe(s) on ${player.name.string}...")
+        }, false)
+
+        sendNextProbe(player)
+    }
+
+    /**
      * Opens the anvil probe UI for the next pending probe for this player.
      */
     fun sendNextProbe(player: ServerPlayerEntity) {
         val queue = pendingProbes[player.uuid] ?: return
         if (queue.isEmpty()) {
             pendingProbes.remove(player.uuid)
+            // If this was a check session, all probes are done — print the report
+            checkSessions.remove(player.uuid)?.let { session ->
+                reportCheckResults(player, session)
+            }
             return
         }
 
@@ -175,12 +228,22 @@ object AnvilProbeManager {
                 "[IdBan] Translation probe detected '$modId' on ${player.name.string} " +
                         "(key='$rawKey' resolved to '$receivedString')"
             )
-            ModDetectionManager.onProbeDetected(player, modId)
         } else {
             IdBan.LOGGER.debug(
                 "[IdBan] Probe for '$modId' negative on ${player.name.string} " +
                         "(key was not resolved)"
             )
+        }
+
+        // If this is a check session, record the result but never kick
+        val session = checkSessions[player.uuid]
+        if (session != null) {
+            if (modDetected) session.detected.add(modId) else session.notDetected.add(modId)
+        } else {
+            // Normal join probe — enforce bans
+            if (modDetected) {
+                ModDetectionManager.onProbeDetected(player, modId)
+            }
         }
 
         // Continue with next probe unless player was kicked
@@ -192,10 +255,34 @@ object AnvilProbeManager {
     }
 
     /**
+     * Sends the full probe report to the operator who ran /idban check.
+     */
+    private fun reportCheckResults(player: ServerPlayerEntity, session: CheckSession) {
+        val src = session.source
+        src.sendFeedback({ Text.literal("§6[IdBan] Probe results for §e${player.name.string}§6:") }, false)
+
+        if (session.detected.isEmpty() && session.notDetected.isEmpty()) {
+            src.sendFeedback({ Text.literal("  §7(no probes ran)") }, false)
+            return
+        }
+
+        if (session.detected.isNotEmpty()) {
+            src.sendFeedback({ Text.literal("  §cDetected (${session.detected.size}): §f${session.detected.joinToString(", ")}") }, false)
+        } else {
+            src.sendFeedback({ Text.literal("  §aNo probed mods detected.") }, false)
+        }
+
+        if (session.notDetected.isNotEmpty()) {
+            src.sendFeedback({ Text.literal("  §7Not detected (${session.notDetected.size}): §8${session.notDetected.joinToString(", ")}") }, false)
+        }
+    }
+
+    /**
      * Clean up all state for a disconnected player.
      */
     fun cancelProbes(uuid: UUID) {
         pendingProbes.remove(uuid)
         activeProbe.remove(uuid)
+        checkSessions.remove(uuid)
     }
 }

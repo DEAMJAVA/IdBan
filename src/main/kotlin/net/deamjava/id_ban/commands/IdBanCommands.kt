@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
 import net.deamjava.id_ban.config.IdBanConfig
+import net.deamjava.id_ban.detection.AnvilProbeManager
 import net.deamjava.id_ban.detection.ModDetectionManager
 import net.minecraft.server.command.CommandManager.argument
 import net.minecraft.server.command.CommandManager.literal
@@ -359,10 +360,16 @@ object IdBanCommands {
             ctx.source.sendFeedback({ Text.literal("§c[IdBan] Player '$playerName' not found online.") }, false)
             return 0
         }
+
+        // ── Channel results (immediate, from join snapshot) ──────────────────
         val channels = ModDetectionManager.detectedChannels[target.uuid] ?: emptySet()
         ctx.source.sendFeedback({
-            Text.literal("§6[IdBan] Channels for ${target.name.string} (${channels.size}): §f${channels.joinToString(", ").ifEmpty { "(none / vanilla)" }}")
+            Text.literal("§6[IdBan] Channels for §e${target.name.string}§6 (${channels.size}): §f${channels.joinToString(", ").ifEmpty { "(none / vanilla)" }}")
         }, false)
+
+        // ── Translation probes (async, results sent when all probes complete) ─
+        AnvilProbeManager.scheduleCheckProbes(target, ctx.source)
+
         return 1
     }
 }
