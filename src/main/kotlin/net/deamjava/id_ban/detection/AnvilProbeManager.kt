@@ -159,8 +159,8 @@ object AnvilProbeManager {
 
             override fun createMenu(
                 syncId: Int,
-                playerInventory: net.minecraft.entity.player.PlayerInventory,
-                playerEntity: net.minecraft.entity.player.PlayerEntity
+                playerInventory: PlayerInventory,
+                playerEntity: PlayerEntity
             ): net.minecraft.screen.ScreenHandler {
                 val ctx = ScreenHandlerContext.create(player.entityWorld as net.minecraft.server.world.ServerWorld, player.blockPos)
                 val handler = ProbeAnvilScreenHandler(syncId, playerInventory, ctx)
