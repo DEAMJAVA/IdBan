@@ -12,12 +12,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Intercepts the RenameItemC2SPacket (sent by the client when renaming an item in an anvil).
- *
  * When the server sends an anvil screen with a translation-key item name, the client
  * resolves the key into its localised string and sends it back as the rename text.
  * We capture that string and hand it to {@link AnvilProbeManager} before vanilla
  * processing occurs.
- *
  * Written in Java because Mixin + Kotlin can have subtle issues with @Shadow fields.
  */
 @Mixin(ServerPlayNetworkHandler.class)

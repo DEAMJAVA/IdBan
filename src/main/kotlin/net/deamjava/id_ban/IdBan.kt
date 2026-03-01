@@ -1,11 +1,9 @@
 package net.deamjava.id_ban
-// ID
 import net.deamjava.id_ban.commands.IdBanCommands
 import net.deamjava.id_ban.config.IdBanConfig
 import net.deamjava.id_ban.detection.ModDetectionManager
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.minecraft.server.network.ServerPlayerEntity
 import org.slf4j.LoggerFactory
 
