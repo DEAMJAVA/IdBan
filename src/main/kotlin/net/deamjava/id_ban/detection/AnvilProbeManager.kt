@@ -187,12 +187,12 @@ object AnvilProbeManager {
         // If we clear after onProbeDetected(), a kick can fire mid-way and
         // disconnect the player while the item is still sitting in the handler,
         // causing vanilla's onClosed() to drop it into their inventory.
-        val handler = player.currentScreenHandler
-        if (handler is AnvilScreenHandler) {
-            for (i in 0 until handler.slots.size) {
-                handler.slots[i].stack = ItemStack.EMPTY
-            }
-        }
+//        val handler = player.currentScreenHandler
+//        if (handler is AnvilScreenHandler) {
+//            for (i in 0 until handler.slots.size) {
+//                handler.slots[i].stack = ItemStack.EMPTY
+//            }
+//        }
 
         // Close the screen before detection so the inventory state is fully
         // settled before any potential kick is issued.

@@ -48,6 +48,20 @@ data class IdBanConfiguration(
     ),
 
     // ------------------------------------------------------------------
+    // Client-command prefix detection
+    // Maps modId → list of command prefixes that mod registers client-side.
+    // When the player sends a tab-complete request starting with any prefix,
+    // the mod is considered detected.
+    // Examples: wurst registers ".b", ".fly" etc.; meteor registers ".help"
+    // ------------------------------------------------------------------
+    val clientCommandPrefixes: MutableMap<String, MutableList<String>> = mutableMapOf(
+        "wurst-client"  to mutableListOf("."),          // all Wurst commands start with "."
+        "meteor-client" to mutableListOf("."),          // Meteor also uses "."
+        "lunar-client"  to mutableListOf("/lc"),
+        "badlion-client" to mutableListOf("/blc")
+    ),
+
+    // ------------------------------------------------------------------
     // When true, a player who is NOT in the playerWhitelist is kicked if
     // their installed mods cannot be determined (vanilla client / no channels).
     // Most operators will want this FALSE.

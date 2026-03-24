@@ -170,6 +170,47 @@ object IdBanCommands {
                             .executes { ctx -> cmdCheck(ctx, StringArgumentType.getString(ctx, "playerName")) }
                     )
                 )
+
+                // ── cmdprefix  (client-command snoop prefixes) ─────────────────
+                // /idban cmdprefix add <modId> <prefix>
+                // /idban cmdprefix remove <modId> <prefix>
+                // /idban cmdprefix list
+                .then(
+                    literal("cmdprefix")
+                        .then(
+                            literal("add")
+                                .then(
+                                    argument("modId", StringArgumentType.word())
+                                        .then(
+                                            argument("prefix", StringArgumentType.greedyString())
+                                                .executes { ctx ->
+                                                    cmdPrefixAdd(
+                                                        ctx,
+                                                        StringArgumentType.getString(ctx, "modId"),
+                                                        StringArgumentType.getString(ctx, "prefix")
+                                                    )
+                                                }
+                                        )
+                                )
+                        )
+                        .then(
+                            literal("remove")
+                                .then(
+                                    argument("modId", StringArgumentType.word())
+                                        .then(
+                                            argument("prefix", StringArgumentType.greedyString())
+                                                .executes { ctx ->
+                                                    cmdPrefixRemove(
+                                                        ctx,
+                                                        StringArgumentType.getString(ctx, "modId"),
+                                                        StringArgumentType.getString(ctx, "prefix")
+                                                    )
+                                                }
+                                        )
+                                )
+                        )
+                        .then(literal("list").executes { ctx -> cmdPrefixList(ctx) })
+                )
         )
     }
 
@@ -349,6 +390,44 @@ object IdBanCommands {
         }
         if (probes.isEmpty()) {
             ctx.source.sendFeedback({ Text.literal("  §7(none)") }, false)
+        }
+        return 1
+    }
+
+    private fun cmdPrefixAdd(ctx: CommandContext<ServerCommandSource>, modId: String, prefix: String): Int {
+        val map = IdBanConfig.config.clientCommandPrefixes
+        val list = map.getOrPut(modId) { mutableListOf() }
+        if (list.any { it.equals(prefix, ignoreCase = true) }) {
+            ctx.source.sendFeedback({ Text.literal("§e[IdBan] Prefix '$prefix' for '$modId' already exists.") }, false)
+            return 0
+        }
+        list.add(prefix)
+        IdBanConfig.save()
+        ctx.source.sendFeedback({ Text.literal("§a[IdBan] Added prefix '$prefix' for mod '$modId'.") }, true)
+        return 1
+    }
+
+    private fun cmdPrefixRemove(ctx: CommandContext<ServerCommandSource>, modId: String, prefix: String): Int {
+        val list = IdBanConfig.config.clientCommandPrefixes[modId]
+        if (list == null || !list.removeIf { it.equals(prefix, ignoreCase = true) }) {
+            ctx.source.sendFeedback({ Text.literal("§e[IdBan] Prefix '$prefix' not found for '$modId'.") }, false)
+            return 0
+        }
+        if (list.isEmpty()) IdBanConfig.config.clientCommandPrefixes.remove(modId)
+        IdBanConfig.save()
+        ctx.source.sendFeedback({ Text.literal("§a[IdBan] Removed prefix '$prefix' from '$modId'.") }, true)
+        return 1
+    }
+
+    private fun cmdPrefixList(ctx: CommandContext<ServerCommandSource>): Int {
+        val map = IdBanConfig.config.clientCommandPrefixes
+        ctx.source.sendFeedback({ Text.literal("§6[IdBan] Client command prefixes (${map.size} mod(s)):") }, false)
+        if (map.isEmpty()) {
+            ctx.source.sendFeedback({ Text.literal("  §7(none)") }, false)
+        } else {
+            map.forEach { (modId, prefixes) ->
+                ctx.source.sendFeedback({ Text.literal("  §e$modId§7: §f${prefixes.joinToString(", ")}") }, false)
+            }
         }
         return 1
     }

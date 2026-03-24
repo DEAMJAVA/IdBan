@@ -24,6 +24,12 @@ import java.util.concurrent.ConcurrentHashMap
  *     translation key from the suspected mod.  If the client resolves the key
  *     (i.e. the returned rename string != the raw key) the mod is present.
  *     This is the "sign / anvil exploit" described in the original request.
+ *
+ *  3. COMMAND PACKET SNOOP  ─ [TabCompletePacketMixin] intercepts every
+ *     RequestCommandCompletionsC2SPacket the client sends. If the partialCommand
+ *     starts with a known client-side mod command prefix (e.g. "." for Wurst/Meteor),
+ *     [CommandSnoopDetector] fires and the mod is flagged. This is passive and
+ *     zero-visual-impact but only triggers when the player presses Tab.
  */
 object ModDetectionManager {
 
@@ -56,13 +62,15 @@ object ModDetectionManager {
             // Check channels against ban lists
             val banReason = checkChannels(player, namespaces)
             if (banReason != null) {
-                // Schedule the kick on the server thread (we are already there via JOIN event)
                 IdBan.kickPlayer(player, banReason)
                 return@register
             }
 
             // ── Phase 2: schedule translation key probes ─────────────────────
             AnvilProbeManager.scheduleProbes(player)
+
+            // Phase 3 (command snoop) is passive — TabCompletePacketMixin fires
+            // automatically whenever the player presses Tab. No setup needed here.
         }
 
         // Clean up when player leaves
@@ -116,9 +124,10 @@ object ModDetectionManager {
             if (matchingNs != null) {
                 return "Banned keyword '$keyword' matched mod channel: $matchingNs"
             }
-            // Also check full channel path
-            val matchingFull = allChannels.firstOrNull {
-                it.toString().contains(keyword, ignoreCase = true)
+            // Also check the full channel path (namespace:path), e.g. "sodium:update_check"
+            val matchingFull = allChannels.firstOrNull { id ->
+                id.namespace.contains(keyword, ignoreCase = true) ||
+                        id.path.contains(keyword, ignoreCase = true)
             }
             if (matchingFull != null) {
                 return "Banned keyword '$keyword' matched channel: $matchingFull"
