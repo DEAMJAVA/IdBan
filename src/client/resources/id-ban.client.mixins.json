@@ -1,4 +1,4 @@
-{
+  // TODO(Ravel): Does not have a concrete package name{
 	"required": true,
 	"package": "net.deamjava.id_ban.mixin.client",
 	"compatibilityLevel": "JAVA_21",

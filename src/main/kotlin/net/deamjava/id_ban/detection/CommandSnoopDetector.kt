@@ -2,7 +2,7 @@ package net.deamjava.id_ban.detection
 
 import net.deamjava.id_ban.IdBan
 import net.deamjava.id_ban.config.IdBanConfig
-import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.server.level.ServerPlayer
 
 /**
  * Detects client-side mods by passively watching tab-complete (RequestCommandCompletions)
@@ -41,7 +41,7 @@ object CommandSnoopDetector {
      * @param player         The player who sent the packet.
      * @param partialCommand The partial command string the client is completing.
      */
-    fun onTabComplete(player: ServerPlayerEntity, partialCommand: String) {
+    fun onTabComplete(player: ServerPlayer, partialCommand: String) {
         if (ModDetectionManager.isPlayerWhitelisted(player)) return
 
         val cfg = IdBanConfig.config

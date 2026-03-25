@@ -4,7 +4,7 @@ import net.deamjava.id_ban.config.IdBanConfig
 import net.deamjava.id_ban.detection.ModDetectionManager
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
-import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.server.level.ServerPlayer
 import org.slf4j.LoggerFactory
 
 object IdBan : ModInitializer {
@@ -33,11 +33,11 @@ object IdBan : ModInitializer {
     /**
      * Kicks a player with a formatted disconnect message.
      */
-    fun kickPlayer(player: ServerPlayerEntity, reason: String) {
-        val msg = net.minecraft.text.Text.literal(
+    fun kickPlayer(player: ServerPlayer, reason: String) {
+        val msg = net.minecraft.network.chat.Component.literal(
             IdBanConfig.config.kickMessage.replace("{reason}", reason)
         )
-        player.networkHandler.disconnect(msg)
+        player.connection.disconnect(msg)
         LOGGER.info("Kicked player ${player.name.string} — Reason: $reason")
     }
 }

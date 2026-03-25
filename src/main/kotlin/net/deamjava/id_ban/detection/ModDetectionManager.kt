@@ -4,8 +4,8 @@ import net.deamjava.id_ban.IdBan
 import net.deamjava.id_ban.config.IdBanConfig
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
-import net.minecraft.server.network.ServerPlayerEntity
-import net.minecraft.util.Identifier
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.resources.Identifier
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -84,7 +84,7 @@ object ModDetectionManager {
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    fun isPlayerWhitelisted(player: ServerPlayerEntity): Boolean {
+    fun isPlayerWhitelisted(player: ServerPlayer): Boolean {
         val whitelist = IdBanConfig.config.playerWhitelist
         if (whitelist.isEmpty()) return false
         val uuidStr = player.uuid.toString()
@@ -96,7 +96,7 @@ object ModDetectionManager {
      * Checks a set of channel namespaces against the ban rules.
      * Returns a human-readable ban reason, or null if the player passes.
      */
-    fun checkChannels(player: ServerPlayerEntity, namespaces: Set<String>): String? {
+    fun checkChannels(player: ServerPlayer, namespaces: Set<String>): String? {
         val cfg = IdBanConfig.config
 
         // Mod-ID whitelist: if enabled, any namespace NOT in the whitelist triggers a kick
@@ -118,7 +118,7 @@ object ModDetectionManager {
         }
 
         // Banned keywords (substring in any channel namespace or full channel name)
-        val allChannels = ServerPlayNetworking.getSendable(player.networkHandler)
+        val allChannels = ServerPlayNetworking.getSendable(player.connection)
         for (keyword in cfg.bannedKeywords) {
             val matchingNs = namespaces.firstOrNull { it.contains(keyword, ignoreCase = true) }
             if (matchingNs != null) {
@@ -141,7 +141,7 @@ object ModDetectionManager {
      * Called by [AnvilProbeManager] when a probe resolves a translation key,
      * confirming a mod is installed.
      */
-    fun onProbeDetected(player: ServerPlayerEntity, detectedModId: String) {
+    fun onProbeDetected(player: ServerPlayer, detectedModId: String) {
         if (isPlayerWhitelisted(player)) return
 
         val cfg = IdBanConfig.config
