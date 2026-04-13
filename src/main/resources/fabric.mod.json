@@ -13,30 +13,20 @@
 	},
 	"license": "MIT",
 	"icon": "assets/id-ban/icon.png",
-	"environment": "*",
+	"environment": "server",
 	"entrypoints": {
 		"main": [
 			{
 				"value": "net.deamjava.id_ban.IdBan",
 				"adapter": "kotlin"
 			}
-		],
-		"client": [
-			{
-				"value": "net.deamjava.id_ban.IdBanClient",
-				"adapter": "kotlin"
-			}
 		]
 	},
 	"mixins": [
-		"id-ban.mixins.json",
-		{
-			"config": "id-ban.client.mixins.json",
-			"environment": "client"
-		}
+		"id-ban.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.18.5",
+		"fabricloader": ">=0.19.1",
 		"minecraft": "~26.1",
 		"java": ">=25",
 		"fabric-api": "*",
