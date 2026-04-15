@@ -28,10 +28,6 @@ public abstract class ResourcePackResponseMixin {
 
         ServerboundResourcePackPacket.Action action = packet.action();
 
-        // The prompt is dismissed the moment the player clicks accept OR decline.
-        // ACCEPTED fires on click (prompt gone), DOWNLOADED/SUCCESSFULLY_LOADED fire
-        // later during download — we don't want to wait that long.
-        // We fire on ACCEPTED + all genuinely terminal states (decline, fail).
         switch (action) {
             case ACCEPTED:
             case DECLINED:
@@ -40,7 +36,7 @@ public abstract class ResourcePackResponseMixin {
                 ModDetectionManager.INSTANCE.onResourcePackResponseReceived(player);
                 break;
             default:
-                break; // DOWNLOADED, SUCCESSFULLY_LOADED — prompt already gone, ignore
+                break;
         }
     }
 }

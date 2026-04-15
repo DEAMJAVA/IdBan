@@ -15,10 +15,6 @@ object ModDetectionManager {
 
     val detectedChannels: ConcurrentHashMap<UUID, Set<String>> = ConcurrentHashMap()
 
-    /**
-     * Players waiting for probe delay.
-     * Maps UUID → ticks remaining before probes should start.
-     */
     private val probeDelay: ConcurrentHashMap<UUID, Int> = ConcurrentHashMap()
     private val receivedPackResponseBeforeSetup: ConcurrentHashMap<UUID, Boolean> = ConcurrentHashMap()
 
@@ -50,16 +46,10 @@ object ModDetectionManager {
             }
 
 
-            // If a resource pack is being pushed by another mod, we must wait for
-            // the client to respond before opening the anvil probe screen.
-            // We optimistically set this flag; if no resource pack response ever
-            // arrives (i.e. no pack was pushed), a fallback tick delay fires instead.
             awaitingResourcePackResponse[player.uuid] = true
-            // Fallback: if no resource pack response comes within N ticks, probe anyway.
             probeDelay[player.uuid] = IdBanConfig.config.probeDelayTicks
         }
 
-        // Tick fallback — fires if no resource pack response was received in time
         ServerTickEvents.END_SERVER_TICK.register { server ->
             tickProbeDelays(server)
         }
@@ -73,11 +63,6 @@ object ModDetectionManager {
         }
     }
 
-    /**
-     * Called by [ResourcePackResponseMixin] when the client responds to a
-     * resource pack prompt (accepted, declined, failed, etc.).
-     * This is the signal that the screen is gone and we can safely probe.
-     */
     fun onResourcePackResponseReceived(player: ServerPlayer) {
         if (!awaitingResourcePackResponse.containsKey(player.uuid)) {
             receivedPackResponseBeforeSetup[player.uuid] = true
@@ -86,7 +71,6 @@ object ModDetectionManager {
         val wasWaiting = awaitingResourcePackResponse.remove(player.uuid) ?: return
         if (!wasWaiting) return
 
-        // Cancel the tick fallback — we got a real response
         probeDelay.remove(player.uuid)
 
         if (!player.hasDisconnected()) {
@@ -102,7 +86,6 @@ object ModDetectionManager {
             val remaining = entry.value - 1
             if (remaining <= 0) {
                 iterator.remove()
-                // Only probe if we're still waiting (resource pack response never came)
                 val stillWaiting = awaitingResourcePackResponse.remove(entry.key) ?: false
                 if (stillWaiting) {
                     val player = server.playerList.getPlayer(entry.key)
@@ -117,7 +100,6 @@ object ModDetectionManager {
         }
     }
 
-    // ── rest of the file unchanged ────────────────────────────────────────────
 
     fun isPlayerWhitelisted(player: ServerPlayer): Boolean {
         val whitelist = IdBanConfig.config.playerWhitelist

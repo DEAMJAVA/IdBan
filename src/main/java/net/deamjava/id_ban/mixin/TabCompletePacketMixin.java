@@ -10,16 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Intercepts RequestCommandCompletionsC2SPacket (the tab-complete request sent by
- * the client when the player presses Tab in the chat box).
- *
- * We forward the partialCommand string to {@link CommandSnoopDetector} which checks
- * it against the configured list of client-side mod command prefixes.
- *
- * We do NOT cancel the packet — vanilla tab-complete still works normally.
- * This is purely a passive observation.
- */
+
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class TabCompletePacketMixin {
 

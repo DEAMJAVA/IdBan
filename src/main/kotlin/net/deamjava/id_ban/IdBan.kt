@@ -15,13 +15,10 @@ object IdBan : ModInitializer {
     override fun onInitialize() {
         LOGGER.info("IdBan initializing...")
 
-        // Load configuration
         IdBanConfig.load()
 
-        // Register detection events
         ModDetectionManager.register()
 
-        // Register commands
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             IdBanCommands.register(dispatcher)
         }
@@ -30,9 +27,6 @@ object IdBan : ModInitializer {
                 "Banned Keywords: ${IdBanConfig.config.bannedKeywords}")
     }
 
-    /**
-     * Kicks a player with a formatted disconnect message.
-     */
     fun kickPlayer(player: ServerPlayer, reason: String) {
         val msg = net.minecraft.network.chat.Component.literal(
             IdBanConfig.config.kickMessage.replace("{reason}", reason)

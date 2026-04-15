@@ -12,36 +12,6 @@ import net.minecraft.commands.CommandSourceStack
 import net.minecraft.network.chat.Component
 import net.minecraft.server.permissions.Permissions
 
-/**
- * Registers the /idban command tree.
- *
- * Usage overview:
- *
- *   /idban reload
- *   /idban save
- *
- *   /idban ban id <modId>
- *   /idban unban id <modId>
- *   /idban list ids
- *
- *   /idban ban keyword <word>
- *   /idban unban keyword <word>
- *   /idban list keywords
- *
- *   /idban whitelist mod add <modId>
- *   /idban whitelist mod remove <modId>
- *   /idban whitelist mod list
- *
- *   /idban whitelist player add <name|uuid>
- *   /idban whitelist player remove <name|uuid>
- *   /idban whitelist player list
- *
- *   /idban probe add <modId> <translationKey>
- *   /idban probe remove <modId>
- *   /idban probe list
- *
- *   /idban check <playerName>   (shows detected channels for online player)
- */
 object IdBanCommands {
 
     fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
@@ -49,11 +19,9 @@ object IdBanCommands {
             literal("idban")
                 .requires { it.permissions().hasPermission(Permissions.COMMANDS_MODERATOR) }
 
-                // ── reload / save ──────────────────────────────────────────────
                 .then(literal("reload").executes { ctx -> cmdReload(ctx) })
                 .then(literal("save").executes { ctx -> cmdSave(ctx) })
 
-                // ── ban ────────────────────────────────────────────────────────
                 .then(
                     literal("ban")
                         .then(
@@ -72,7 +40,6 @@ object IdBanCommands {
                         )
                 )
 
-                // ── unban ──────────────────────────────────────────────────────
                 .then(
                     literal("unban")
                         .then(
@@ -91,14 +58,12 @@ object IdBanCommands {
                         )
                 )
 
-                // ── list ───────────────────────────────────────────────────────
                 .then(
                     literal("list")
                         .then(literal("ids").executes { ctx -> cmdListIds(ctx) })
                         .then(literal("keywords").executes { ctx -> cmdListKeywords(ctx) })
                 )
 
-                // ── whitelist mod ──────────────────────────────────────────────
                 .then(
                     literal("whitelist")
                         .then(
@@ -135,7 +100,6 @@ object IdBanCommands {
                         )
                 )
 
-                // ── probe ──────────────────────────────────────────────────────
                 .then(
                     literal("probe")
                         .then(
@@ -163,7 +127,6 @@ object IdBanCommands {
                         .then(literal("list").executes { ctx -> cmdProbeList(ctx) })
                 )
 
-                // ── check ──────────────────────────────────────────────────────
                 .then(
                     literal("check").then(
                         argument("playerName", StringArgumentType.word())
@@ -171,10 +134,6 @@ object IdBanCommands {
                     )
                 )
 
-                // ── cmdprefix  (client-command snoop prefixes) ─────────────────
-                // /idban cmdprefix add <modId> <prefix>
-                // /idban cmdprefix remove <modId> <prefix>
-                // /idban cmdprefix list
                 .then(
                     literal("cmdprefix")
                         .then(
@@ -214,9 +173,6 @@ object IdBanCommands {
         )
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Command implementations
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun cmdReload(ctx: CommandContext<CommandSourceStack>): Int {
         IdBanConfig.reload()
@@ -440,13 +396,11 @@ object IdBanCommands {
             return 0
         }
 
-        // ── Channel results (immediate, from join snapshot) ──────────────────
         val channels = ModDetectionManager.detectedChannels[target.uuid] ?: emptySet()
         ctx.source.sendSuccess({
             Component.literal("§6[IdBan] Channels for §e${target.name.string}§6 (${channels.size}): §f${channels.joinToString(", ").ifEmpty { "(none / vanilla)" }}")
         }, false)
 
-        // ── Translation probes (async, results sent when all probes complete) ─
         AnvilProbeManager.scheduleCheckProbes(target, ctx.source)
 
         return 1
