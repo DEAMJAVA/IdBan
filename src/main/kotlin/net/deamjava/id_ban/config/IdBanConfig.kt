@@ -71,7 +71,11 @@ data class IdBanConfiguration(
     // ------------------------------------------------------------------
     // Message shown to the kicked player.  {reason} is substituted.
     // ------------------------------------------------------------------
-    val kickMessage: String = "§cYou are running a banned modification: §e{reason}"
+    val kickMessage: String = "§cYou are running a banned modification: §e{reason}",
+
+
+
+    val probeDelayTicks: Int = 200
 )
 
 object IdBanConfig {
