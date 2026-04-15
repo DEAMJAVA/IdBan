@@ -1,9 +1,9 @@
 package net.deamjava.id_ban.mixin;
 
 import net.deamjava.id_ban.detection.AnvilProbeManager;
-import net.minecraft.network.packet.c2s.play.RenameItemC2SPacket;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.network.protocol.game.ServerboundRenameItemPacket;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,18 +18,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * processing occurs.
  * Written in Java because Mixin + Kotlin can have subtle issues with @Shadow fields.
  */
-@Mixin(ServerPlayNetworkHandler.class)
+@Mixin(ServerGamePacketListenerImpl.class)
 public abstract class AnvilRenamePacketMixin {
 
     @Shadow
-    public ServerPlayerEntity player;
+    public ServerPlayer player;
 
     @Inject(
-            method = "onRenameItem(Lnet/minecraft/network/packet/c2s/play/RenameItemC2SPacket;)V",
+            method = "handleRenameItem(Lnet/minecraft/network/protocol/game/ServerboundRenameItemPacket;)V",
             at = @At("HEAD"),
             cancellable = true
     )
-    private void idBan$onRenameItem(RenameItemC2SPacket packet, CallbackInfo ci) {
+    private void idBan$onRenameItem(ServerboundRenameItemPacket packet, CallbackInfo ci) {
         if (player == null) return;
 
         String name = packet.getName();

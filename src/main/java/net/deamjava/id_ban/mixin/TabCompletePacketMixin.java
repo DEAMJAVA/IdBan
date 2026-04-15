@@ -1,9 +1,9 @@
 package net.deamjava.id_ban.mixin;
 
 import net.deamjava.id_ban.detection.CommandSnoopDetector;
-import net.minecraft.network.packet.c2s.play.RequestCommandCompletionsC2SPacket;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.network.protocol.game.ServerboundCommandSuggestionPacket;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,19 +20,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * We do NOT cancel the packet — vanilla tab-complete still works normally.
  * This is purely a passive observation.
  */
-@Mixin(ServerPlayNetworkHandler.class)
+@Mixin(ServerGamePacketListenerImpl.class)
 public abstract class TabCompletePacketMixin {
 
     @Shadow
-    public ServerPlayerEntity player;
+    public ServerPlayer player;
 
     @Inject(
-            method = "onRequestCommandCompletions(Lnet/minecraft/network/packet/c2s/play/RequestCommandCompletionsC2SPacket;)V",
+            method = "handleCustomCommandSuggestions(Lnet/minecraft/network/protocol/game/ServerboundCommandSuggestionPacket;)V",
             at = @At("HEAD")
     )
-    private void idBan$onTabComplete(RequestCommandCompletionsC2SPacket packet, CallbackInfo ci) {
+    private void idBan$onTabComplete(ServerboundCommandSuggestionPacket packet, CallbackInfo ci) {
         if (player == null) return;
-        String partial = packet.getPartialCommand();
+        String partial = packet.getCommand();
         if (partial == null || partial.isEmpty()) return;
         CommandSnoopDetector.INSTANCE.onTabComplete(player, partial);
     }

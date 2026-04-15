@@ -2,17 +2,17 @@ package net.deamjava.id_ban.detection
 
 import net.deamjava.id_ban.IdBan
 import net.deamjava.id_ban.config.IdBanConfig
-import net.minecraft.component.DataComponentTypes
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.entity.player.PlayerInventory
-import net.minecraft.item.ItemStack
-import net.minecraft.item.Items
-import net.minecraft.screen.AnvilScreenHandler
-import net.minecraft.screen.NamedScreenHandlerFactory
-import net.minecraft.screen.ScreenHandlerContext
-import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.server.network.ServerPlayerEntity
-import net.minecraft.text.Text
+import net.minecraft.core.component.DataComponents
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.inventory.AnvilMenu
+import net.minecraft.world.MenuProvider
+import net.minecraft.world.inventory.ContainerLevelAccess
+import net.minecraft.commands.CommandSourceStack
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.network.chat.Component
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -20,22 +20,22 @@ import java.util.concurrent.ConcurrentHashMap
 object AnvilProbeManager {
     class ProbeAnvilScreenHandler(
         syncId: Int,
-        playerInventory: PlayerInventory,
-        ctx: ScreenHandlerContext
-    ) : AnvilScreenHandler(syncId, playerInventory, ctx) {
+        playerInventory: Inventory,
+        ctx: ContainerLevelAccess
+    ) : AnvilMenu(syncId, playerInventory, ctx) {
 
-        override fun onClosed(player: PlayerEntity) {
+        override fun removed(player: Player) {
             // DO NOTHING
             // prevents vanilla from giving items back or dropping them
         }
 
         // Optional but recommended: block shift-click stealing
-        override fun quickMove(player: PlayerEntity, slot: Int): ItemStack {
+        override fun quickMoveStack(player: Player, slot: Int): ItemStack {
             return ItemStack.EMPTY
         }
 
         // Optional: prevent pickup
-        override fun canUse(player: PlayerEntity): Boolean {
+        override fun stillValid(player: Player): Boolean {
             return true
         }
     }
@@ -60,7 +60,7 @@ object AnvilProbeManager {
     private val checkSessions: ConcurrentHashMap<UUID, CheckSession> = ConcurrentHashMap()
 
     data class CheckSession(
-        val source: ServerCommandSource,
+        val source: CommandSourceStack,
         val detected: MutableList<String> = mutableListOf(),
         val notDetected: MutableList<String> = mutableListOf()
     )
@@ -69,7 +69,7 @@ object AnvilProbeManager {
      * Schedule probes for all translation keys configured in the config.
      * Called on join — results are used for ban enforcement.
      */
-    fun scheduleProbes(player: ServerPlayerEntity) {
+    fun scheduleProbes(player: ServerPlayer) {
         val cfg = IdBanConfig.config
         val probes = cfg.translationProbes
 
@@ -90,20 +90,20 @@ object AnvilProbeManager {
      * Schedule probes triggered by /idban check.
      * Results are reported back to [source] — no kicks are issued.
      */
-    fun scheduleCheckProbes(player: ServerPlayerEntity, source: ServerCommandSource) {
+    fun scheduleCheckProbes(player: ServerPlayer, source: CommandSourceStack) {
         val cfg = IdBanConfig.config
         val probes = cfg.translationProbes
 
         if (probes.isEmpty()) {
-            source.sendFeedback({ Text.literal("§e[IdBan] No translation probes configured.") }, false)
+            source.sendSuccess({ Component.literal("§e[IdBan] No translation probes configured.") }, false)
             return
         }
 
         // If probes are already running for this player (e.g. still joining),
         // don't stack a second run — just inform the operator.
         if (pendingProbes.containsKey(player.uuid) || activeProbe.containsKey(player.uuid)) {
-            source.sendFeedback({
-                Text.literal("§e[IdBan] Probes already in progress for ${player.name.string}, try again shortly.")
+            source.sendSuccess({
+                Component.literal("§e[IdBan] Probes already in progress for ${player.name.string}, try again shortly.")
             }, false)
             return
         }
@@ -116,8 +116,8 @@ object AnvilProbeManager {
         }
         pendingProbes[player.uuid] = queue
 
-        source.sendFeedback({
-            Text.literal("§7[IdBan] Running ${probes.size} probe(s) on ${player.name.string}...")
+        source.sendSuccess({
+            Component.literal("§7[IdBan] Running ${probes.size} probe(s) on ${player.name.string}...")
         }, false)
 
         sendNextProbe(player)
@@ -126,7 +126,7 @@ object AnvilProbeManager {
     /**
      * Opens the anvil probe UI for the next pending probe for this player.
      */
-    fun sendNextProbe(player: ServerPlayerEntity) {
+    fun sendNextProbe(player: ServerPlayer) {
         val queue = pendingProbes[player.uuid] ?: return
         if (queue.isEmpty()) {
             pendingProbes.remove(player.uuid)
@@ -148,24 +148,24 @@ object AnvilProbeManager {
             // The client will resolve this translation key and display the result.
             // We use the raw translatable text so the client sees it as a key to resolve.
             stack.set(
-                DataComponentTypes.CUSTOM_NAME,
-                Text.translatable(translationKey)
+                DataComponents.CUSTOM_NAME,
+                Component.translatable(translationKey)
             )
         }
 
         // Open anvil screen with the probe item in slot 0
-        player.openHandledScreen(object : NamedScreenHandlerFactory {
-            override fun getDisplayName(): Text = Text.empty()
+        player.openMenu(object : MenuProvider {
+            override fun getDisplayName(): Component = Component.empty()
 
             override fun createMenu(
                 syncId: Int,
-                playerInventory: PlayerInventory,
-                playerEntity: PlayerEntity
-            ): net.minecraft.screen.ScreenHandler {
-                val ctx = ScreenHandlerContext.create(player.entityWorld as net.minecraft.server.world.ServerWorld, player.blockPos)
+                playerInventory: Inventory,
+                playerEntity: Player
+            ): net.minecraft.screen.AbstractContainerMenu {
+                val ctx = ContainerLevelAccess.create(player.level() as net.minecraft.server.world.ServerLevel, player.blockPosition())
                 val handler = ProbeAnvilScreenHandler(syncId, playerInventory, ctx)
                 // Insert the probe item into the first input slot
-                handler.slots[0].stack = probeItem.copy()
+                handler.slots[0].setByPlayer(probeItem.copy())
                 return handler
             }
         })
@@ -179,7 +179,7 @@ object AnvilProbeManager {
      * @param receivedString The string the client sent (possibly resolved key).
      * @return true if this packet was a probe response and should be swallowed.
      */
-    fun onProbeResponse(player: ServerPlayerEntity, receivedString: String): Boolean {
+    fun onProbeResponse(player: ServerPlayer, receivedString: String): Boolean {
         val probe = activeProbe.remove(player.uuid) ?: return false
         val (modId, rawKey) = probe
 
@@ -196,7 +196,7 @@ object AnvilProbeManager {
 
         // Close the screen before detection so the inventory state is fully
         // settled before any potential kick is issued.
-        player.closeHandledScreen()
+        player.closeContainer()
 
         val modDetected = receivedString != rawKey
 
@@ -224,7 +224,7 @@ object AnvilProbeManager {
         }
 
         // Continue with next probe unless player was kicked
-        if (!player.isDisconnected) {
+        if (!player.hasDisconnected()) {
             sendNextProbe(player)
         }
 
@@ -234,23 +234,23 @@ object AnvilProbeManager {
     /**
      * Sends the full probe report to the operator who ran /idban check.
      */
-    private fun reportCheckResults(player: ServerPlayerEntity, session: CheckSession) {
+    private fun reportCheckResults(player: ServerPlayer, session: CheckSession) {
         val src = session.source
-        src.sendFeedback({ Text.literal("§6[IdBan] Probe results for §e${player.name.string}§6:") }, false)
+        src.sendSuccess({ Component.literal("§6[IdBan] Probe results for §e${player.name.string}§6:") }, false)
 
         if (session.detected.isEmpty() && session.notDetected.isEmpty()) {
-            src.sendFeedback({ Text.literal("  §7(no probes ran)") }, false)
+            src.sendSuccess({ Component.literal("  §7(no probes ran)") }, false)
             return
         }
 
         if (session.detected.isNotEmpty()) {
-            src.sendFeedback({ Text.literal("  §cDetected (${session.detected.size}): §f${session.detected.joinToString(", ")}") }, false)
+            src.sendSuccess({ Component.literal("  §cDetected (${session.detected.size}): §f${session.detected.joinToString(", ")}") }, false)
         } else {
-            src.sendFeedback({ Text.literal("  §aNo probed mods detected.") }, false)
+            src.sendSuccess({ Component.literal("  §aNo probed mods detected.") }, false)
         }
 
         if (session.notDetected.isNotEmpty()) {
-            src.sendFeedback({ Text.literal("  §7Not detected (${session.notDetected.size}): §8${session.notDetected.joinToString(", ")}") }, false)
+            src.sendSuccess({ Component.literal("  §7Not detected (${session.notDetected.size}): §8${session.notDetected.joinToString(", ")}") }, false)
         }
     }
 
