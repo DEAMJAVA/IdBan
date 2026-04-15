@@ -3,8 +3,9 @@
 	"package": "net.deamjava.id_ban.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-      "AnvilRenamePacketMixin",
-      "TabCompletePacketMixin"
+      	"AnvilRenamePacketMixin",
+      	"TabCompletePacketMixin",
+		"ResourcePackResponseMixin"
     ],
 	"injectors": {
 		"defaultRequire": 1
