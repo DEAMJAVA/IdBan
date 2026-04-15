@@ -161,8 +161,8 @@ object AnvilProbeManager {
                 syncId: Int,
                 playerInventory: Inventory,
                 playerEntity: Player
-            ): net.minecraft.screen.AbstractContainerMenu {
-                val ctx = ContainerLevelAccess.create(player.level() as net.minecraft.server.world.ServerLevel, player.blockPosition())
+            ): net.minecraft.world.inventory.AbstractContainerMenu {
+                val ctx = ContainerLevelAccess.create(player.level(), player.blockPosition())
                 val handler = ProbeAnvilScreenHandler(syncId, playerInventory, ctx)
                 // Insert the probe item into the first input slot
                 handler.slots[0].setByPlayer(probeItem.copy())
