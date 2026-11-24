@@ -23,7 +23,7 @@ public abstract class TabCompletePacketMixin {
     )
     private void idBan$onTabComplete(ServerboundCommandSuggestionPacket packet, CallbackInfo ci) {
         if (player == null) return;
-        String partial = packet.getCommand();
+        String partial = packet.command();
         if (partial == null || partial.isEmpty()) return;
         CommandSnoopDetector.INSTANCE.onTabComplete(player, partial);
     }
